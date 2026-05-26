@@ -332,86 +332,84 @@ body.svgzhenli-paused * {
     updateTransforms();
     resetDOMOrder();
 
+    // ========== 拖拽逻辑（手机 / 电脑通用，手感优化） ==========
     const svg = document.getElementById('mainSVG');
     let dragging = null;
     let offset = { x: 0, y: 0 };
     let activePointerId = null;
 
-    // 鼠标/触摸通用：按下开始拖拽
-    svg.addEventListener('pointerdown', e => {
+    // 只在 SVG 上监听「开始拖拽」
+    svg.addEventListener('pointerdown', function(e) {
       const target = e.target.closest('.draggable');
       if (!target) return;
 
-      // 防止拖拽时触发浏览器默认行为（如页面滚动、选中文字）
+      // 防止页面跟着手指滚动或缩放
       e.preventDefault();
       
       dragging = target.id;
       activePointerId = e.pointerId;
       
-      // 将元素移到最上层
+      // 将被拖动的元素移到最上层
       target.parentNode.appendChild(target);
       
-      let pt = svg.createSVGPoint();
-      pt.x = e.clientX; pt.y = e.clientY;
-      pt = pt.matrixTransform(svg.getScreenCTM().inverse());
-      offset.x = pt.x - currentPos[dragging].x;
-      offset.y = pt.y - currentPos[dragging].y;
+      // 计算手指 / 鼠标点击位置相对于元素中心的偏移
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+      offset.x = svgPt.x - currentPos[dragging].x;
+      offset.y = svgPt.y - currentPos[dragging].y;
       
       assembled[dragging] = false;
       updateTransforms();
-
-      // 捕获指针，保证后续事件都发到这个 svg 元素上
-      svg.setPointerCapture(activePointerId);
     });
 
-    // 移动
-    svg.addEventListener('pointermove', e => {
+    // 移动和释放事件监听在 document 上，确保手指滑出 SVG 也不会中断
+    document.addEventListener('pointermove', function(e) {
       if (!dragging || e.pointerId !== activePointerId) return;
       e.preventDefault();
       
-      let pt = svg.createSVGPoint();
-      pt.x = e.clientX; pt.y = e.clientY;
-      pt = pt.matrixTransform(svg.getScreenCTM().inverse());
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
       
-      currentPos[dragging].x = pt.x - offset.x;
-      currentPos[dragging].y = pt.y - offset.y;
+      currentPos[dragging].x = svgPt.x - offset.x;
+      currentPos[dragging].y = svgPt.y - offset.y;
       updateTransforms();
     });
 
-    // 松开（鼠标、手指抬起都触发）
-    svg.addEventListener('pointerup', e => {
+    document.addEventListener('pointerup', function(e) {
       if (!dragging || e.pointerId !== activePointerId) return;
       endDrag();
     });
 
-    // 如果指针意外丢失（比如手势中断）
-    svg.addEventListener('lostpointercapture', e => {
+    // 防止因系统手势等原因意外中断
+    document.addEventListener('pointercancel', function(e) {
       if (!dragging || e.pointerId !== activePointerId) return;
       endDrag();
     });
 
-    // 通用释放处理
     function endDrag() {
-      const tx = targets[dragging].x;
-      const ty = targets[dragging].y;
-      const dx = currentPos[dragging].x - tx;
-      const dy = currentPos[dragging].y - ty;
+      if (!dragging) return;
+      const targetPos = targets[dragging];
+      const dx = currentPos[dragging].x - targetPos.x;
+      const dy = currentPos[dragging].y - targetPos.y;
+      
+      // 磁吸：距离目标点小于45像素就自动吸附
       if (Math.sqrt(dx*dx + dy*dy) < 45) {
-        currentPos[dragging].x = tx;
-        currentPos[dragging].y = ty;
+        currentPos[dragging].x = targetPos.x;
+        currentPos[dragging].y = targetPos.y;
         assembled[dragging] = true;
       }
+      
       updateTransforms();
       resetDOMOrder();
       dragging = null;
       activePointerId = null;
-      // 释放指针捕获
-      if (svg.hasPointerCapture && svg.hasPointerCapture(activePointerId)) {
-        svg.releasePointerCapture(activePointerId);
-      }
     }
 
-    // ===== 秒表逻辑（不变） =====
+    // ===== 秒表逻辑（保持不变） =====
     let swTime = 0;
     let swRunning = false;
     
@@ -439,7 +437,7 @@ body.svgzhenli-paused * {
       swText.textContent = (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s) + '.' + ms;
     }
 
-    // ===== 全局暂停按钮（不变） =====
+    // ===== 全局暂停按钮（保持不变） =====
     const btnGlobal = document.getElementById('btn-global-pause');
     const textGlobal = document.getElementById('text-global-pause');
     const rectGlobal = btnGlobal.querySelector('rect');
@@ -463,7 +461,7 @@ body.svgzhenli-paused * {
       }
     });
 
-    // ===== 气泡系统（不变） =====
+    // ===== 气泡系统（保持不变） =====
     const maxBubbles = 20;
     let bubbleData = Array(maxBubbles).fill(null).map(() => ({ active: false }));
     const bg = document.getElementById('bubbles-group');
