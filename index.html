@@ -3,14 +3,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <style>
-  * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
-  html, body { margin: 0; padding: 0; width: 100%; height: 100%; min-height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #FAF7F2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; overscroll-behavior: none; }
-  .container { width: 960px; height: 540px; position: relative; background: #FFFFFF; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden; touch-action: none; }
-  svg { user-select: none; -webkit-user-select: none; touch-action: none; }
+  /* ========== 全局触控阻断 ========== */
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%; min-height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    background-color: #FAF7F2;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden; overscroll-behavior: none;
+    touch-action: none;                 /* 阻断全局触摸默认行为 */
+    -webkit-touch-callout: none;        /* 禁止 iOS 长按菜单 */
+    -webkit-user-drag: none;            /* 禁止拖拽幽灵 */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  .container {
+    width: 960px; height: 540px; position: relative;
+    background: #FFFFFF; box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    border-radius: 12px; overflow: hidden;
+    touch-action: none;                 /* 容器也阻断 */
+    -webkit-user-drag: none;
+  }
+  svg {
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+    -webkit-user-drag: none;
+    display: block;                     /* 消除 inline 间隙 */
+  }
   text { pointer-events: none; }
-  .draggable { cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
+
+  /* ========== 拖拽元素 ========== */
+  .draggable {
+    cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none;
+    -webkit-user-drag: none;
+    will-change: transform;              /* GPU 加速提示 */
+  }
   .draggable:active { cursor: grabbing; }
   .assembled { filter: drop-shadow(0 0 6px rgba(76, 201, 240, 0.6)); }
+
+  /* ========== 火焰动画 ========== */
   .flame {
     transform-origin: center bottom;
     animation: flicker 0.4s infinite alternate ease-in-out;
@@ -20,135 +50,151 @@
     0% { transform: scale(0.95) rotate(-2deg); opacity: 0.8; }
     100% { transform: scale(1.05) rotate(2deg); opacity: 1; }
   }
+
+  /* ========== 面板与按钮 ========== */
   .panel { fill: #F8F9FA; stroke: #E9ECEF; stroke-width: 1.5; }
   .btn-hover { transition: all 0.2s ease; }
   .btn-hover:hover { opacity: 0.8; }
 
-/* ================= 遮罩组件独立样式 ================= */
-.main-wrapper { display: flex !important; align-items: flex-start !important; gap: 20px !important; }
-.side-panel { display: flex !important; flex-direction: column !important; gap: 15px !important; }
-.mask-controls-box { background-color: #FAF7F2 !important; padding: 12px 8px !important; border-radius: 10px !important; border: 1px solid #E5D5C5 !important; box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important; display: flex !important; flex-direction: column !important; gap: 8px !important; width: 48px !important; align-items: center !important; }
-.mask-title { font-size: 12px !important; font-weight: 600 !important; color: #5C4A3D !important; text-align: center !important; margin-bottom: 2px !important; letter-spacing: 1px !important; line-height: 1 !important; }
-.mask-controls-box .html-btn { appearance: none !important; -webkit-appearance: none !important; width: 32px !important; height: 32px !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; transition: all 0.2s ease !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important; }
-.mask-controls-box .html-btn:active { transform: translateY(2px) !important; }
-.mask-controls-box .btn-add { background-color: #5C4A3D !important; color: #FFFFFF !important; box-shadow: 0 2px 6px rgba(92, 74, 61, 0.2) !important; }
-.mask-controls-box .btn-add:hover { background-color: #4A3A2E !important; }
-.mask-controls-box .btn-toggle { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
-.mask-controls-box .btn-toggle:hover { background-color: #F5EBE0 !important; }
-.mask-controls-box .btn-clear { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
-.mask-controls-box .btn-clear:hover { background-color: #F5EBE0 !important; }
-.mask-controls-box .btn-icon { width: 16px !important; height: 16px !important; display: block !important; fill: currentColor !important; stroke: none !important; background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none !important; }
-.mask-controls-box .btn-icon * { fill: currentColor !important; stroke: none !important; }
-#maskToggleBtn .icon-eye-closed { display: none !important; }
-#maskToggleBtn[data-state="hidden"] .icon-eye-open { display: none !important; }
-#maskToggleBtn[data-state="hidden"] .icon-eye-closed { display: block !important; }
-.draggable-mask { cursor: move; }
+  /* ========== 遮罩组件独立样式 ========== */
+  .main-wrapper { display: flex !important; align-items: flex-start !important; gap: 20px !important; }
+  .side-panel { display: flex !important; flex-direction: column !important; gap: 15px !important; }
+  .mask-controls-box {
+    background-color: #FAF7F2 !important; padding: 12px 8px !important;
+    border-radius: 10px !important; border: 1px solid #E5D5C5 !important;
+    box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important;
+    display: flex !important; flex-direction: column !important; gap: 8px !important;
+    width: 48px !important; align-items: center !important;
+  }
+  .mask-title {
+    font-size: 12px !important; font-weight: 600 !important; color: #5C4A3D !important;
+    text-align: center !important; margin-bottom: 2px !important; letter-spacing: 1px !important; line-height: 1 !important;
+  }
+  .mask-controls-box .html-btn {
+    appearance: none !important; -webkit-appearance: none !important;
+    width: 32px !important; height: 32px !important; border: none !important;
+    border-radius: 6px !important; cursor: pointer !important; transition: all 0.2s ease !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    padding: 0 !important; position: relative !important;
+    left: auto !important; top: auto !important; right: auto !important; bottom: auto !important;
+  }
+  .mask-controls-box .html-btn:active { transform: translateY(2px) !important; }
+  .mask-controls-box .btn-add { background-color: #5C4A3D !important; color: #FFFFFF !important; box-shadow: 0 2px 6px rgba(92, 74, 61, 0.2) !important; }
+  .mask-controls-box .btn-add:hover { background-color: #4A3A2E !important; }
+  .mask-controls-box .btn-toggle { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
+  .mask-controls-box .btn-toggle:hover { background-color: #F5EBE0 !important; }
+  .mask-controls-box .btn-clear { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
+  .mask-controls-box .btn-clear:hover { background-color: #F5EBE0 !important; }
+  .mask-controls-box .btn-icon {
+    width: 16px !important; height: 16px !important; display: block !important;
+    fill: currentColor !important; stroke: none !important; background: transparent !important;
+    border: none !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none !important;
+  }
+  .mask-controls-box .btn-icon * { fill: currentColor !important; stroke: none !important; }
+  #maskToggleBtn .icon-eye-closed { display: none !important; }
+  #maskToggleBtn[data-state="hidden"] .icon-eye-open { display: none !important; }
+  #maskToggleBtn[data-state="hidden"] .icon-eye-closed { display: block !important; }
+  .draggable-mask { cursor: move; }
 
-/* ================= 主画布通用遮罩样式 ================= */
-.download-mask-shell { display: flex !important; align-items: flex-start !important; gap: 20px !important; }
-.download-mask-toolbar { display: flex !important; flex-direction: column !important; gap: 15px !important; }
-.download-mask-controls { background-color: #FAF7F2 !important; padding: 12px 8px !important; border-radius: 10px !important; border: 1px solid #E5D5C5 !important; box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important; display: flex !important; flex-direction: column !important; gap: 8px !important; width: 48px !important; align-items: center !important; }
-.download-mask-title { font-size: 12px !important; font-weight: 600 !important; color: #5C4A3D !important; text-align: center !important; margin-bottom: 2px !important; letter-spacing: 1px !important; line-height: 1 !important; }
-.download-mask-controls .html-btn { appearance: none !important; -webkit-appearance: none !important; width: 32px !important; height: 32px !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; transition: all 0.2s ease !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important; }
-.download-mask-controls .html-btn:active { transform: translateY(2px) !important; }
-.download-mask-controls .btn-add { background-color: #5C4A3D !important; color: #FFFFFF !important; box-shadow: 0 2px 6px rgba(92, 74, 61, 0.2) !important; }
-.download-mask-controls .btn-add:hover { background-color: #4A3A2E !important; }
-.download-mask-controls .btn-toggle,
-.download-mask-controls .btn-clear { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
-.download-mask-controls .btn-toggle:hover,
-.download-mask-controls .btn-clear:hover { background-color: #F5EBE0 !important; }
-.download-mask-controls .btn-icon { width: 16px !important; height: 16px !important; display: block !important; fill: currentColor !important; stroke: none !important; background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none !important; }
-.download-mask-controls .btn-icon * { fill: currentColor !important; stroke: none !important; }
-#downloadMaskToggleBtn .icon-eye-closed { display: none !important; }
-#downloadMaskToggleBtn[data-state="hidden"] .icon-eye-open { display: none !important; }
-#downloadMaskToggleBtn[data-state="hidden"] .icon-eye-closed { display: block !important; }
-[data-mask-stage-root="true"] { position: relative !important; overflow: hidden !important; }
-[data-mask-overlay="true"] { position: absolute !important; inset: 0 !important; z-index: 2147483000 !important; pointer-events: none !important; overflow: hidden !important; }
-[data-mask-overlay="true"][data-hidden="true"] { display: none !important; }
-.download-mask-block { position: absolute !important; background: #FFFFFF !important; border-radius: 8px !important; border: 1px solid #E5D5C5 !important; box-shadow: 0 6px 20px rgba(92, 74, 61, 0.16) !important; pointer-events: auto !important; cursor: move !important; user-select: none !important; touch-action: none !important; min-width: 30px !important; min-height: 30px !important; }
-.download-mask-handle { position: absolute !important; right: 0 !important; bottom: 0 !important; width: 16px !important; height: 16px !important; cursor: nwse-resize !important; background: linear-gradient(135deg, transparent 48%, #C4B5A5 48%, #C4B5A5 70%, transparent 70%) !important; border-bottom-right-radius: 8px !important; touch-action: none !important; }
+  /* ========== 主画布通用遮罩样式 ========== */
+  .download-mask-shell { display: flex !important; align-items: flex-start !important; gap: 20px !important; }
+  .download-mask-toolbar { display: flex !important; flex-direction: column !important; gap: 15px !important; }
+  .download-mask-controls {
+    background-color: #FAF7F2 !important; padding: 12px 8px !important;
+    border-radius: 10px !important; border: 1px solid #E5D5C5 !important;
+    box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important;
+    display: flex !important; flex-direction: column !important; gap: 8px !important;
+    width: 48px !important; align-items: center !important;
+  }
+  .download-mask-title {
+    font-size: 12px !important; font-weight: 600 !important; color: #5C4A3D !important;
+    text-align: center !important; margin-bottom: 2px !important; letter-spacing: 1px !important; line-height: 1 !important;
+  }
+  .download-mask-controls .html-btn {
+    appearance: none !important; -webkit-appearance: none !important;
+    width: 32px !important; height: 32px !important; border: none !important;
+    border-radius: 6px !important; cursor: pointer !important; transition: all 0.2s ease !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    padding: 0 !important; position: relative !important;
+    left: auto !important; top: auto !important; right: auto !important; bottom: auto !important;
+  }
+  .download-mask-controls .html-btn:active { transform: translateY(2px) !important; }
+  .download-mask-controls .btn-add { background-color: #5C4A3D !important; color: #FFFFFF !important; box-shadow: 0 2px 6px rgba(92, 74, 61, 0.2) !important; }
+  .download-mask-controls .btn-add:hover { background-color: #4A3A2E !important; }
+  .download-mask-controls .btn-toggle,
+  .download-mask-controls .btn-clear { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
+  .download-mask-controls .btn-toggle:hover,
+  .download-mask-controls .btn-clear:hover { background-color: #F5EBE0 !important; }
+  .download-mask-controls .btn-icon {
+    width: 16px !important; height: 16px !important; display: block !important;
+    fill: currentColor !important; stroke: none !important; background: transparent !important;
+    border: none !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none !important;
+  }
+  .download-mask-controls .btn-icon * { fill: currentColor !important; stroke: none !important; }
+  #downloadMaskToggleBtn .icon-eye-closed { display: none !important; }
+  #downloadMaskToggleBtn[data-state="hidden"] .icon-eye-open { display: none !important; }
+  #downloadMaskToggleBtn[data-state="hidden"] .icon-eye-closed { display: block !important; }
+  [data-mask-stage-root="true"] { position: relative !important; overflow: hidden !important; }
+  [data-mask-overlay="true"] {
+    position: absolute !important; inset: 0 !important; z-index: 2147483000 !important;
+    pointer-events: none !important; overflow: hidden !important;
+  }
+  [data-mask-overlay="true"][data-hidden="true"] { display: none !important; }
+  .download-mask-block {
+    position: absolute !important; background: #FFFFFF !important; border-radius: 8px !important;
+    border: 1px solid #E5D5C5 !important; box-shadow: 0 6px 20px rgba(92, 74, 61, 0.16) !important;
+    pointer-events: auto !important; cursor: move !important; user-select: none !important;
+    touch-action: none !important; min-width: 30px !important; min-height: 30px !important;
+  }
+  .download-mask-handle {
+    position: absolute !important; right: 0 !important; bottom: 0 !important;
+    width: 16px !important; height: 16px !important; cursor: nwse-resize !important;
+    background: linear-gradient(135deg, transparent 48%, #C4B5A5 48%, #C4B5A5 70%, transparent 70%) !important;
+    border-bottom-right-radius: 8px !important; touch-action: none !important;
+  }
 
-/* ================= 暂停交互样式 ================= */
-html.svgzhenli-paused *,
-body.svgzhenli-paused * {
-  animation-play-state: paused !important;
-}
-[data-svgzhenli-pause-hint="true"] {
-  position: fixed !important;
-  left: 50% !important;
-  bottom: 12px !important;
-  transform: translateX(-50%) !important;
-  z-index: 2147483200 !important;
-  padding: 4px 10px !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(229, 213, 197, 0.9) !important;
-  background: rgba(250, 247, 242, 0.82) !important;
-  color: rgba(92, 74, 61, 0.78) !important;
-  font: 500 11px/1.2 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif !important;
-  letter-spacing: 0.02em !important;
-  box-shadow: 0 10px 30px rgba(92, 74, 61, 0.1) !important;
-  pointer-events: none !important;
-  user-select: none !important;
-  backdrop-filter: blur(6px) !important;
-  -webkit-backdrop-filter: blur(6px) !important;
-}
-[data-svgzhenli-pause-floating-shell="true"] {
-  position: fixed !important;
-  left: 50% !important;
-  bottom: 18px !important;
-  transform: translateX(-50%) !important;
-  z-index: 2147483250 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  align-items: flex-end !important;
-  pointer-events: none !important;
-}
-[data-svgzhenli-pause-floating-shell="true"][data-svgzhenli-pause-placement="bottom-right"] {
-  left: auto !important;
-  right: 18px !important;
-  transform: none !important;
-}
-[data-svgzhenli-pause-floating-shell="true"][data-svgzhenli-pause-placement="bottom-center"] {
-  align-items: center !important;
-}
-[data-svgzhenli-pause-floating-shell="true"] [data-svgzhenli-pause-btn="true"] {
-  pointer-events: auto !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 6px !important;
-  border: 1px solid rgba(229, 213, 197, 0.95) !important;
-  background: #FFFFFF !important;
-  color: #5C4A3D !important;
-  box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important;
-}
-[data-svgzhenli-pause-floating-shell="true"] [data-svgzhenli-pause-btn="true"]:hover {
-  background: #F5EBE0 !important;
-}
-[data-svgzhenli-pause-floating-shell="true"] .btn-icon {
-  width: 18px !important;
-  height: 18px !important;
-}
-.mask-controls-box [data-svgzhenli-pause-btn="true"],
-.download-mask-controls [data-svgzhenli-pause-btn="true"] {
-  background-color: #FFFFFF !important;
-  color: #5C4A3D !important;
-  border: 1px solid #5C4A3D !important;
-}
-.mask-controls-box [data-svgzhenli-pause-btn="true"]:hover,
-.download-mask-controls [data-svgzhenli-pause-btn="true"]:hover {
-  background-color: #F5EBE0 !important;
-}
-[data-svgzhenli-pause-btn="true"] .icon-play {
-  display: none !important;
-}
-[data-svgzhenli-pause-btn="true"][data-svgzhenli-pause-mode="paused"] .icon-pause {
-  display: none !important;
-}
-[data-svgzhenli-pause-btn="true"][data-svgzhenli-pause-mode="paused"] .icon-play {
-  display: block !important;
-}
-
+  /* ========== 暂停交互样式 ========== */
+  html.svgzhenli-paused *, body.svgzhenli-paused * { animation-play-state: paused !important; }
+  [data-svgzhenli-pause-hint="true"] {
+    position: fixed !important; left: 50% !important; bottom: 12px !important;
+    transform: translateX(-50%) !important; z-index: 2147483200 !important;
+    padding: 4px 10px !important; border-radius: 999px !important;
+    border: 1px solid rgba(229, 213, 197, 0.9) !important;
+    background: rgba(250, 247, 242, 0.82) !important; color: rgba(92, 74, 61, 0.78) !important;
+    font: 500 11px/1.2 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif !important;
+    letter-spacing: 0.02em !important; box-shadow: 0 10px 30px rgba(92, 74, 61, 0.1) !important;
+    pointer-events: none !important; user-select: none !important;
+    backdrop-filter: blur(6px) !important; -webkit-backdrop-filter: blur(6px) !important;
+  }
+  [data-svgzhenli-pause-floating-shell="true"] {
+    position: fixed !important; left: 50% !important; bottom: 18px !important;
+    transform: translateX(-50%) !important; z-index: 2147483250 !important;
+    display: flex !important; flex-direction: column !important; gap: 10px !important;
+    align-items: flex-end !important; pointer-events: none !important;
+  }
+  [data-svgzhenli-pause-floating-shell="true"][data-svgzhenli-pause-placement="bottom-right"] {
+    left: auto !important; right: 18px !important; transform: none !important;
+  }
+  [data-svgzhenli-pause-floating-shell="true"][data-svgzhenli-pause-placement="bottom-center"] {
+    align-items: center !important;
+  }
+  [data-svgzhenli-pause-floating-shell="true"] [data-svgzhenli-pause-btn="true"] {
+    pointer-events: auto !important; width: 32px !important; height: 32px !important;
+    border-radius: 6px !important; border: 1px solid rgba(229, 213, 197, 0.95) !important;
+    background: #FFFFFF !important; color: #5C4A3D !important;
+    box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important;
+  }
+  [data-svgzhenli-pause-floating-shell="true"] [data-svgzhenli-pause-btn="true"]:hover { background: #F5EBE0 !important; }
+  [data-svgzhenli-pause-floating-shell="true"] .btn-icon { width: 18px !important; height: 18px !important; }
+  .mask-controls-box [data-svgzhenli-pause-btn="true"],
+  .download-mask-controls [data-svgzhenli-pause-btn="true"] {
+    background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important;
+  }
+  .mask-controls-box [data-svgzhenli-pause-btn="true"]:hover,
+  .download-mask-controls [data-svgzhenli-pause-btn="true"]:hover { background-color: #F5EBE0 !important; }
+  [data-svgzhenli-pause-btn="true"] .icon-play { display: none !important; }
+  [data-svgzhenli-pause-btn="true"][data-svgzhenli-pause-mode="paused"] .icon-pause { display: none !important; }
+  [data-svgzhenli-pause-btn="true"][data-svgzhenli-pause-mode="paused"] .icon-play { display: block !important; }
 </style>
 </head>
 <body>
@@ -291,6 +337,7 @@ body.svgzhenli-paused * {
   </div>
 
   <script>
+    /* ================= 状态变量 ================= */
     let temp = 20;
     let isPaused = false;
     
@@ -314,6 +361,7 @@ body.svgzhenli-paused * {
 
     const items = ['lamp', 'mesh', 'beaker', 'board', 'thermometer'];
 
+    /* ================= DOM 操作 ================= */
     function updateTransforms() {
       items.forEach(id => {
         const el = document.getElementById(id);
@@ -334,18 +382,15 @@ body.svgzhenli-paused * {
     updateTransforms();
     resetDOMOrder();
 
+    /* ================= 坐标转换 ================= */
     const svg = document.getElementById('mainSVG');
-    let dragging = null;
-    let offset = { x: 0, y: 0 };
     let cachedInverse = null;
 
-    // 缓存坐标转换矩阵，避免每帧重复计算
     function refreshInverseMatrix() {
       const ctm = svg.getScreenCTM();
       if (ctm) cachedInverse = ctm.inverse();
     }
 
-    // 屏幕坐标 → SVG坐标
     function screenToSVG(clientX, clientY) {
       if (!cachedInverse) refreshInverseMatrix();
       if (!cachedInverse) return { x: clientX, y: clientY };
@@ -356,7 +401,76 @@ body.svgzhenli-paused * {
       return { x: pt.x, y: pt.y };
     }
 
-    // Pointer Events 统一处理鼠标和触摸
+    /* ================= 拖拽引擎（双事件层） ================= */
+    let draggingId = null;
+    let dragOffset = { x: 0, y: 0 };
+    let dragEl = null;
+    let pointerId = null;
+
+    // 统一的拖拽开始逻辑
+    function startDrag(id, clientX, clientY) {
+      dragEl = document.getElementById(id);
+      if (!dragEl) return false;
+      
+      draggingId = id;
+      refreshInverseMatrix();
+      
+      // 将元素置顶，避免被其他元素遮挡
+      dragEl.parentNode.appendChild(dragEl);
+      
+      const svgPt = screenToSVG(clientX, clientY);
+      dragOffset.x = svgPt.x - currentPos[id].x;
+      dragOffset.y = svgPt.y - currentPos[id].y;
+      assembled[id] = false;
+      updateTransforms();
+      return true;
+    }
+
+    // 统一的拖拽移动逻辑
+    function moveDrag(clientX, clientY) {
+      if (!draggingId) return;
+      const svgPt = screenToSVG(clientX, clientY);
+      currentPos[draggingId].x = svgPt.x - dragOffset.x;
+      currentPos[draggingId].y = svgPt.y - dragOffset.y;
+      updateTransforms();
+    }
+
+    // 统一的拖拽结束逻辑（吸附阈值从45放宽到70）
+    function endDrag() {
+      if (!draggingId) return;
+      
+      const tx = targets[draggingId].x;
+      const ty = targets[draggingId].y;
+      const dx = currentPos[draggingId].x - tx;
+      const dy = currentPos[draggingId].y - ty;
+      
+      // 阈值放宽到 70，手机端更容易吸附
+      if (Math.sqrt(dx * dx + dy * dy) < 70) {
+        currentPos[draggingId].x = tx;
+        currentPos[draggingId].y = ty;
+        assembled[draggingId] = true;
+      }
+      
+      updateTransforms();
+      resetDOMOrder();
+      draggingId = null;
+      dragEl = null;
+      pointerId = null;
+      cachedInverse = null;
+    }
+
+    // 获取事件坐标（兼容 Pointer 和 Touch）
+    function getEventCoords(e) {
+      if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      }
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    /* ---------- Pointer Events 层 ---------- */
     svg.addEventListener('pointerdown', function(e) {
       const target = e.target.closest('.draggable');
       if (!target) return;
@@ -364,71 +478,143 @@ body.svgzhenli-paused * {
       e.preventDefault();
       e.stopPropagation();
 
-      // 捕获指针，防止手指滑出元素后丢失事件
-      if (target.setPointerCapture) {
+      pointerId = e.pointerId;
+      
+      // 尝试捕获指针，失败也不影响，Touch Events 会作为后备
+      try {
         target.setPointerCapture(e.pointerId);
+      } catch (err) {
+        // SVG 元素在某些浏览器上 setPointerCapture 会抛错，忽略即可
       }
 
-      // 刷新矩阵缓存
-      refreshInverseMatrix();
-
-      dragging = target.id;
-      target.parentNode.appendChild(target);
-
-      const svgPt = screenToSVG(e.clientX, e.clientY);
-      offset.x = svgPt.x - currentPos[dragging].x;
-      offset.y = svgPt.y - currentPos[dragging].y;
-      assembled[dragging] = false;
-      updateTransforms();
+      startDrag(target.id, e.clientX, e.clientY);
     }, { passive: false });
 
     svg.addEventListener('pointermove', function(e) {
-      if (!dragging) return;
+      if (!draggingId || pointerId !== e.pointerId) return;
       e.preventDefault();
-
-      const svgPt = screenToSVG(e.clientX, e.clientY);
-      currentPos[dragging].x = svgPt.x - offset.x;
-      currentPos[dragging].y = svgPt.y - offset.y;
-      updateTransforms();
+      moveDrag(e.clientX, e.clientY);
     }, { passive: false });
 
     svg.addEventListener('pointerup', function(e) {
-      if (!dragging) return;
+      if (!draggingId || pointerId !== e.pointerId) return;
       e.preventDefault();
-
-      const tx = targets[dragging].x;
-      const ty = targets[dragging].y;
-      const dx = currentPos[dragging].x - tx;
-      const dy = currentPos[dragging].y - ty;
-      if (Math.sqrt(dx * dx + dy * dy) < 45) {
-        currentPos[dragging].x = tx;
-        currentPos[dragging].y = ty;
-        assembled[dragging] = true;
-      }
-      updateTransforms();
-      resetDOMOrder();
-      dragging = null;
-      cachedInverse = null;
+      
+      // 释放指针捕获
+      try {
+        if (dragEl && dragEl.releasePointerCapture) {
+          dragEl.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
+      
+      endDrag();
     }, { passive: false });
 
     svg.addEventListener('pointercancel', function(e) {
-      if (!dragging) return;
-      updateTransforms();
-      resetDOMOrder();
-      dragging = null;
-      cachedInverse = null;
+      if (!draggingId || pointerId !== e.pointerId) return;
+      
+      try {
+        if (dragEl && dragEl.releasePointerCapture) {
+          dragEl.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
+      
+      endDrag();
     });
 
-    // 禁止整个页面的默认触摸行为（防止下拉刷新、页面滚动等）
-    document.addEventListener('touchmove', function(e) {
-      if (dragging) e.preventDefault();
+    /* ---------- Touch Events 后备层 ---------- */
+    // 当 Pointer Events 不可靠时（如 iOS 旧版 WebView），Touch Events 保证基础功能
+    let touchId = null;
+
+    svg.addEventListener('touchstart', function(e) {
+      const target = e.target.closest('.draggable');
+      if (!target) return;
+
+      // 关键：阻止浏览器默认滚动/缩放，这是手机端流畅拖拽的根基
+      e.preventDefault();
+      e.stopPropagation();
+
+      const touch = e.touches[0];
+      touchId = touch.identifier;
+      
+      startDrag(target.id, touch.clientX, touch.clientY);
     }, { passive: false });
 
-    // 窗口大小变化时清除矩阵缓存
+    svg.addEventListener('touchmove', function(e) {
+      if (!draggingId) return;
+      
+      // 找到对应的触摸点
+      let touch = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === touchId) {
+          touch = e.touches[i];
+          break;
+        }
+      }
+      if (!touch) return;
+      
+      e.preventDefault();
+      moveDrag(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    svg.addEventListener('touchend', function(e) {
+      if (!draggingId) return;
+      
+      // 检查是否是当前拖拽的触摸点结束
+      let found = false;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchId) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) return;
+      
+      e.preventDefault();
+      touchId = null;
+      endDrag();
+    }, { passive: false });
+
+    svg.addEventListener('touchcancel', function(e) {
+      if (!draggingId) return;
+      
+      let found = false;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchId) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) return;
+      
+      touchId = null;
+      endDrag();
+    });
+
+    /* ---------- 全局防护 ---------- */
+    // 禁止页面级别的默认触摸行为，防止下拉刷新、左右滑动切换等干扰实验
+    document.addEventListener('touchmove', function(e) {
+      if (draggingId) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchstart', function(e) {
+      // 如果触摸目标不是可拖拽元素，也阻止默认行为（防止双击缩放）
+      if (!e.target.closest('.draggable') && !e.target.closest('.btn-hover')) {
+        // 允许按钮点击，但阻止其他区域的默认手势
+        if (!e.target.closest('g[style*="cursor: pointer"]')) {
+          // 不阻止按钮类的触摸，避免影响秒表和暂停按钮
+        }
+      }
+    }, { passive: false });
+
+    // 窗口变化时清除矩阵缓存
     window.addEventListener('resize', function() {
       cachedInverse = null;
     });
 
+    /* ================= 秒表逻辑 ================= */
     let swTime = 0;
     let swRunning = false;
     
@@ -456,6 +642,7 @@ body.svgzhenli-paused * {
       swText.textContent = (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s) + '.' + ms;
     }
 
+    /* ================= 全局暂停 ================= */
     const btnGlobal = document.getElementById('btn-global-pause');
     const textGlobal = document.getElementById('text-global-pause');
     const rectGlobal = btnGlobal.querySelector('rect');
@@ -479,12 +666,13 @@ body.svgzhenli-paused * {
       }
     });
 
+    /* ================= 气泡系统 ================= */
     const maxBubbles = 20;
     let bubbleData = Array(maxBubbles).fill(null).map(() => ({ active: false }));
     const bg = document.getElementById('bubbles-group');
     const bubbleElements = [];
     
-    for(let i=0; i<maxBubbles; i++) {
+    for(let i=0; i<<maxBubbles; i++) {
       let c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       c.setAttribute('fill', 'none');
       c.setAttribute('stroke', '#FFFFFF');
@@ -536,6 +724,7 @@ body.svgzhenli-paused * {
       });
     }
 
+    /* ================= 温度计渲染 ================= */
     function renderThermometers() {
       const sLine = document.getElementById('thermo-line');
       sLine.setAttribute('y', 80 - temp * 1.5);
@@ -546,6 +735,7 @@ body.svgzhenli-paused * {
       bLine.setAttribute('height', temp * 3 - 45);
     }
 
+    /* ================= 主循环 ================= */
     let lastTime = 0;
     let realLastTime = performance.now();
 
