@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; min-height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #FAF7F2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  .container { width: 960px; height: 540px; position: relative; background: #FFFFFF; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden; }
+  svg { user-select: none; }
+  text { pointer-events: none; }
+  .draggable { cursor: grab; }
+  .draggable:active { cursor: grabbing; }
+  .assembled { filter: drop-shadow(0 0 6px rgba(76, 201, 240, 0.6)); }
+  .flame {
+    transform-origin: center bottom;
+    animation: flicker 0.4s infinite alternate ease-in-out;
+    transform-box: fill-box;
+  }
+  @keyframes flicker {
+    0% { transform: scale(0.95) rotate(-2deg); opacity: 0.8; }
+    100% { transform: scale(1.05) rotate(2deg); opacity: 1; }
+  }
+  .panel { fill: #F8F9FA; stroke: #E9ECEF; stroke-width: 1.5; }
+  .btn-hover { transition: all 0.2s ease; }
+  .btn-hover:hover { opacity: 0.8; }
+
+/* ================= 遮罩组件独立样式 ================= */
+.main-wrapper { display: flex !important; align-items: flex-start !important; gap: 20px !important; }
+.side-panel { display: flex !important; flex-direction: column !important; gap: 15px !important; }
+.mask-controls-box { background-color: #FAF7F2 !important; padding: 12px 8px !important; border-radius: 10px !important; border: 1px solid #E5D5C5 !important; box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important; display: flex !important; flex-direction: column !important; gap: 8px !important; width: 48px !important; align-items: center !important; }
+.mask-title { font-size: 12px !important; font-weight: 600 !important; color: #5C4A3D !important; text-align: center !important; margin-bottom: 2px !important; letter-spacing: 1px !important; line-height: 1 !important; }
+.mask-controls-box .html-btn { appearance: none !important; -webkit-appearance: none !important; width: 32px !important; height: 32px !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; transition: all 0.2s ease !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important; }
+.mask-controls-box .html-btn:active { transform: translateY(2px) !important; }
+.mask-controls-box .btn-add { background-color: #5C4A3D !important; color: #FFFFFF !important; box-shadow: 0 2px 6px rgba(92, 74, 61, 0.2) !important; }
+.mask-controls-box .btn-add:hover { background-color: #4A3A2E !important; }
+.mask-controls-box .btn-toggle { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
+.mask-controls-box .btn-toggle:hover { background-color: #F5EBE0 !important; }
+.mask-controls-box .btn-clear { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
+.mask-controls-box .btn-clear:hover { background-color: #F5EBE0 !important; }
+.mask-controls-box .btn-icon { width: 16px !important; height: 16px !important; display: block !important; fill: currentColor !important; stroke: none !important; background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none !important; }
+.mask-controls-box .btn-icon * { fill: currentColor !important; stroke: none !important; }
+#maskToggleBtn .icon-eye-closed { display: none !important; }
+#maskToggleBtn[data-state="hidden"] .icon-eye-open { display: none !important; }
+#maskToggleBtn[data-state="hidden"] .icon-eye-closed { display: block !important; }
+.draggable-mask { cursor: move; }
+
+/* ================= 主画布通用遮罩样式 ================= */
+.download-mask-shell { display: flex !important; align-items: flex-start !important; gap: 20px !important; }
+.download-mask-toolbar { display: flex !important; flex-direction: column !important; gap: 15px !important; }
+.download-mask-controls { background-color: #FAF7F2 !important; padding: 12px 8px !important; border-radius: 10px !important; border: 1px solid #E5D5C5 !important; box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important; display: flex !important; flex-direction: column !important; gap: 8px !important; width: 48px !important; align-items: center !important; }
+.download-mask-title { font-size: 12px !important; font-weight: 600 !important; color: #5C4A3D !important; text-align: center !important; margin-bottom: 2px !important; letter-spacing: 1px !important; line-height: 1 !important; }
+.download-mask-controls .html-btn { appearance: none !important; -webkit-appearance: none !important; width: 32px !important; height: 32px !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; transition: all 0.2s ease !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important; }
+.download-mask-controls .html-btn:active { transform: translateY(2px) !important; }
+.download-mask-controls .btn-add { background-color: #5C4A3D !important; color: #FFFFFF !important; box-shadow: 0 2px 6px rgba(92, 74, 61, 0.2) !important; }
+.download-mask-controls .btn-add:hover { background-color: #4A3A2E !important; }
+.download-mask-controls .btn-toggle,
+.download-mask-controls .btn-clear { background-color: #FFFFFF !important; color: #5C4A3D !important; border: 1px solid #5C4A3D !important; }
+.download-mask-controls .btn-toggle:hover,
+.download-mask-controls .btn-clear:hover { background-color: #F5EBE0 !important; }
+.download-mask-controls .btn-icon { width: 16px !important; height: 16px !important; display: block !important; fill: currentColor !important; stroke: none !important; background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none !important; }
+.download-mask-controls .btn-icon * { fill: currentColor !important; stroke: none !important; }
+#downloadMaskToggleBtn .icon-eye-closed { display: none !important; }
+#downloadMaskToggleBtn[data-state="hidden"] .icon-eye-open { display: none !important; }
+#downloadMaskToggleBtn[data-state="hidden"] .icon-eye-closed { display: block !important; }
+[data-mask-stage-root="true"] { position: relative !important; overflow: hidden !important; }
+[data-mask-overlay="true"] { position: absolute !important; inset: 0 !important; z-index: 2147483000 !important; pointer-events: none !important; overflow: hidden !important; }
+[data-mask-overlay="true"][data-hidden="true"] { display: none !important; }
+.download-mask-block { position: absolute !important; background: #FFFFFF !important; border-radius: 8px !important; border: 1px solid #E5D5C5 !important; box-shadow: 0 6px 20px rgba(92, 74, 61, 0.16) !important; pointer-events: auto !important; cursor: move !important; user-select: none !important; touch-action: none !important; min-width: 30px !important; min-height: 30px !important; }
+.download-mask-handle { position: absolute !important; right: 0 !important; bottom: 0 !important; width: 16px !important; height: 16px !important; cursor: nwse-resize !important; background: linear-gradient(135deg, transparent 48%, #C4B5A5 48%, #C4B5A5 70%, transparent 70%) !important; border-bottom-right-radius: 8px !important; touch-action: none !important; }
+
+/* ================= 暂停交互样式 ================= */
+html.svgzhenli-paused *,
+body.svgzhenli-paused * {
+  animation-play-state: paused !important;
+}
+[data-svgzhenli-pause-hint="true"] {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 12px !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483200 !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(229, 213, 197, 0.9) !important;
+  background: rgba(250, 247, 242, 0.82) !important;
+  color: rgba(92, 74, 61, 0.78) !important;
+  font: 500 11px/1.2 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 10px 30px rgba(92, 74, 61, 0.1) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+[data-svgzhenli-pause-floating-shell="true"] {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 18px !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483250 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  align-items: flex-end !important;
+  pointer-events: none !important;
+}
+[data-svgzhenli-pause-floating-shell="true"][data-svgzhenli-pause-placement="bottom-right"] {
+  left: auto !important;
+  right: 18px !important;
+  transform: none !important;
+}
+[data-svgzhenli-pause-floating-shell="true"][data-svgzhenli-pause-placement="bottom-center"] {
+  align-items: center !important;
+}
+[data-svgzhenli-pause-floating-shell="true"] [data-svgzhenli-pause-btn="true"] {
+  pointer-events: auto !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(229, 213, 197, 0.95) !important;
+  background: #FFFFFF !important;
+  color: #5C4A3D !important;
+  box-shadow: 0 4px 16px rgba(92, 74, 61, 0.08) !important;
+}
+[data-svgzhenli-pause-floating-shell="true"] [data-svgzhenli-pause-btn="true"]:hover {
+  background: #F5EBE0 !important;
+}
+[data-svgzhenli-pause-floating-shell="true"] .btn-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+.mask-controls-box [data-svgzhenli-pause-btn="true"],
+.download-mask-controls [data-svgzhenli-pause-btn="true"] {
+  background-color: #FFFFFF !important;
+  color: #5C4A3D !important;
+  border: 1px solid #5C4A3D !important;
+}
+.mask-controls-box [data-svgzhenli-pause-btn="true"]:hover,
+.download-mask-controls [data-svgzhenli-pause-btn="true"]:hover {
+  background-color: #F5EBE0 !important;
+}
+[data-svgzhenli-pause-btn="true"] .icon-play {
+  display: none !important;
+}
+[data-svgzhenli-pause-btn="true"][data-svgzhenli-pause-mode="paused"] .icon-pause {
+  display: none !important;
+}
+[data-svgzhenli-pause-btn="true"][data-svgzhenli-pause-mode="paused"] .icon-play {
+  display: block !important;
+}
+
+</style>
+</head>
+<body>
+  <div class="container">
+    <svg viewBox="0 0 960 540" id="mainSVG" width="100%" height="100%">
+      <defs>
+        <linearGradient id="glass-shine" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.1"></stop>
+          <stop offset="20%" stop-color="#ffffff" stop-opacity="0.8"></stop>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"></feDropShadow>
+        </filter>
+        <radialGradient id="bulb-grad" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#FF9999"></stop>
+          <stop offset="30%" stop-color="#E63946"></stop>
+          <stop offset="100%" stop-color="#8B0000"></stop>
+        </radialGradient>
+        <linearGradient id="thermo-grad" x1="0" y1="0" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#C1121F"></stop>
+          <stop offset="50%" stop-color="#E63946"></stop>
+          <stop offset="100%" stop-color="#780000"></stop>
+        </linearGradient>
+        <linearGradient id="water-grad" x1="0" y1="0" x2="0" y2="100%">
+          <stop offset="0%" stop-color="#90E0EF" stop-opacity="0.6"></stop>
+          <stop offset="100%" stop-color="#00B4D8" stop-opacity="0.3"></stop>
+        </linearGradient>
+      </defs>
+
+      <rect x="0" y="0" width="660" height="540" fill="#FFFFFF"></rect>
+      <rect x="660" y="0" width="300" height="540" fill="#FCFDFD"></rect>
+      <line x1="660" y1="0" x2="660" y2="540" stroke="#E9ECEF" stroke-width="2"></line>
+
+      <g id="stand">
+        <rect x="180" y="430" width="160" height="15" rx="4" fill="#343A40"></rect>
+        <rect x="200" y="80" width="12" height="350" fill="#ADB5BD" rx="4"></rect>
+        <rect x="210" y="343" width="130" height="8" fill="#6C757D" rx="2"></rect>
+        <rect x="210" y="105" width="140" height="10" fill="#6C757D" rx="3"></rect>
+        <rect x="325" y="115" width="10" height="15" fill="#495057" rx="2"></rect>
+        <text x="210" y="475" font-size="13" fill="#ADB5BD" font-weight="bold">铁架台 (吸附基准)</text>
+      </g>
+
+      <text x="680" y="40" font-size="18" font-weight="bold" fill="#212529">水沸腾温度变化实验</text>
+      <text x="680" y="65" font-size="12" fill="#6C757D">1. 拖拽左侧器材至铁架台进行组装。</text>
+      <text x="680" y="85" font-size="12" fill="#6C757D">2. 组装完毕即自动加热，观察水温与气泡。</text>
+      <text x="680" y="105" font-size="12" fill="#6C757D">3. 随时移开酒精灯观察降温过程。</text>
+
+      <rect x="680" y="130" width="150" height="85" rx="8" class="panel"></rect>
+      <text x="695" y="155" font-size="12" fill="#6C757D">当前温度：</text>
+      <text x="695" y="182" font-size="24" font-weight="bold" fill="#E63946" id="text-temp">20.0 ℃</text>
+      <text x="695" y="202" font-size="12" font-weight="bold" fill="#343A40" id="text-status">未全组装</text>
+
+      <rect x="680" y="230" width="150" height="120" rx="8" class="panel"></rect>
+      <text x="695" y="255" font-size="12" fill="#6C757D">实验秒表：</text>
+      <g transform="translate(755, 305)">
+        <circle cx="0" cy="0" r="34" fill="#343A40" filter="url(#shadow)"></circle>
+        <circle cx="0" cy="0" r="29" fill="#FFFFFF"></circle>
+        <text x="0" y="-10" font-size="9" fill="#E63946" font-weight="bold" text-anchor="middle">TIMER</text>
+        <text x="0" y="8" font-size="15" font-family="monospace" font-weight="bold" text-anchor="middle" fill="#212529" id="text-sw-time">00:00.0</text>
+        <g id="btn-sw-toggle" class="btn-hover" style="cursor: pointer;" transform="translate(0, -34)">
+          <rect x="-10" y="-8" width="20" height="10" rx="3" fill="#E63946"></rect>
+        </g>
+        <g id="btn-sw-reset" class="btn-hover" style="cursor: pointer;" transform="rotate(45) translate(0, -33)">
+          <rect x="-7" y="-6" width="14" height="8" rx="2" fill="#ADB5BD"></rect>
+        </g>
+      </g>
+      <text x="755" y="365" font-size="11" fill="#ADB5BD" text-anchor="middle">红键启停 | 灰键复位</text>
+
+      <g id="btn-global-pause" class="btn-hover" style="cursor: pointer;" transform="translate(680, 380)">
+        <rect width="150" height="36" rx="8" fill="#E63946" filter="url(#shadow)"></rect>
+        <text x="75" y="23" font-size="14" fill="#FFFFFF" text-anchor="middle" font-weight="bold" id="text-global-pause">⏸ 暂停全局实验</text>
+      </g>
+      <text x="755" y="435" font-size="11" fill="#ADB5BD" text-anchor="middle">亦可使用 Space 空格键</text>
+
+      <g transform="translate(890, 310)">
+        <rect x="-15" y="-160" width="30" height="320" rx="15" fill="#FFFFFF" stroke="#343A40" stroke-width="2" filter="url(#shadow)"></rect>
+        <rect x="-15" y="-160" width="30" height="320" rx="15" fill="url(#glass-shine)" pointer-events="none"></rect>
+        <circle cx="0" cy="150" r="22" fill="url(#bulb-grad)"></circle>
+        <circle cx="-6" cy="142" r="6" fill="#FFFFFF" opacity="0.5"></circle>
+        <rect id="big-thermo-line" x="-5" y="135" width="10" height="25" rx="3" fill="url(#thermo-grad)"></rect> 
+        <path d="M-15,135 L-5,135 M-15,105 L-5,105 M-15,75 L-5,75 M-15,45 L-5,45 M-15,15 L-5,15 M-15,-15 L-5,-15 M-15,-45 L-5,-45 M-15,-75 L-5,-75 M-15,-105 L-5,-105 M-15,-135 L-5,-135" stroke="#343A40" stroke-width="1.5"></path>
+        <text x="-22" y="140" font-size="12" text-anchor="end" fill="#343A40">20</text>
+        <text x="-22" y="110" font-size="12" text-anchor="end" fill="#343A40">30</text>
+        <text x="-22" y="80" font-size="12" text-anchor="end" fill="#343A40">40</text>
+        <text x="-22" y="50" font-size="12" text-anchor="end" fill="#343A40">50</text>
+        <text x="-22" y="20" font-size="12" text-anchor="end" fill="#343A40">60</text>
+        <text x="-22" y="-10" font-size="12" text-anchor="end" fill="#343A40">70</text>
+        <text x="-22" y="-40" font-size="12" text-anchor="end" fill="#343A40">80</text>
+        <text x="-22" y="-70" font-size="12" text-anchor="end" fill="#343A40">90</text>
+        <text x="-22" y="-100" font-size="14" font-weight="bold" text-anchor="end" fill="#E63946">100</text>
+        <text x="-22" y="-130" font-size="12" text-anchor="end" fill="#343A40">110</text>
+      </g>
+
+      <g id="drag-container">
+        <g id="lamp" class="draggable">
+          <path class="flame" d="M0,-40 Q15,-65 0,-85 Q-15,-65 0,-40 Z" fill="#FFD700" opacity="0.8"></path>
+          <path class="flame" d="M0,-40 Q8,-55 0,-65 Q-8,-55 0,-40 Z" fill="#E63946" opacity="0.9"></path>
+          <path d="M-25,30 L25,30 L35,-10 L15,-30 L-15,-30 L-35,-10 Z" fill="#E0F7FA" opacity="0.9" stroke="#457B9D" stroke-width="2"></path>
+          <path d="M-22,25 L22,25 L29,0 L-29,0 Z" fill="#A2D2FF" opacity="0.7"></path>
+          <rect x="-8" y="-40" width="16" height="10" fill="#6C757D" stroke="#343A40" stroke-width="1"></rect>
+          <text x="0" y="48" font-size="12" fill="#6C757D" text-anchor="middle">酒精灯</text>
+        </g>
+
+        <g id="mesh" class="draggable">
+          <rect x="-40" y="-3" width="80" height="6" fill="#F8F9FA" stroke="#6C757D" stroke-width="2"></rect>
+          <path d="M-30,-3 L-30,3 M-20,-3 L-20,3 M-10,-3 L-10,3 M0,-3 L0,3 M10,-3 L10,3 M20,-3 L20,3 M30,-3 L30,3" stroke="#ADB5BD" stroke-width="1"></path>
+          <text x="0" y="18" font-size="12" fill="#6C757D" text-anchor="middle">石棉网</text>
+        </g>
+
+        <g id="beaker" class="draggable">
+          <rect x="-35" y="-45" width="70" height="90" rx="4" fill="#FFFFFF" opacity="0.4" stroke="#ADB5BD" stroke-width="2"></rect>
+          <rect x="-33" y="-15" width="66" height="58" rx="2" fill="url(#water-grad)"></rect>
+          <ellipse cx="0" cy="-15" rx="33" ry="4" fill="#E0F7FA" opacity="0.6"></ellipse>
+          <g id="bubbles-group"></g>
+          <rect x="-35" y="-45" width="70" height="90" rx="4" fill="none" stroke="#ADB5BD" stroke-width="2"></rect>
+          <text x="0" y="65" font-size="12" fill="#6C757D" text-anchor="middle">烧杯与水</text>
+        </g>
+
+        <g id="board" class="draggable">
+          <polygon points="-40,10 -20,-10 40,-10 20,10" fill="#E9ECEF" stroke="#ADB5BD" stroke-width="1.5"></polygon>
+          <polygon points="-40,12 -20,-8 40,-8 20,12" fill="none" stroke="#6C757D" stroke-width="1.5" opacity="0.4"></polygon>
+          <ellipse cx="0" cy="0" rx="6" ry="3" fill="#343A40"></ellipse>
+          <ellipse cx="0" cy="0" rx="4" ry="2" fill="#212529"></ellipse>
+          <text x="0" y="28" font-size="12" fill="#6C757D" text-anchor="middle">带孔纸板</text>
+        </g>
+        
+        <g id="thermometer" class="draggable">
+          <line x1="0" y1="-105" x2="0" y2="-95" stroke="#FF69B4" stroke-width="1.5"></line>
+          <circle cx="0" cy="-93" r="2" fill="none" stroke="#ADB5BD" stroke-width="1.5"></circle>
+          <rect x="-3" y="-95" width="6" height="175" rx="3" fill="#FFFFFF" stroke="#ADB5BD" stroke-width="1.5"></rect>
+          <circle cx="0" cy="80" r="6" fill="url(#bulb-grad)"></circle>
+          <circle cx="-1.5" cy="78" r="2" fill="#FFFFFF" opacity="0.6"></circle>
+          <rect id="thermo-line" x="-1.5" y="50" width="3" height="30" fill="url(#thermo-grad)"></rect>
+          <path d="M-3,50 L0,50 M-3,20 L0,20 M-3,-10 L0,-10 M-3,-40 L0,-40 M-3,-70 L0,-70 M-3,-100 L0,-100" stroke="#343A40" stroke-width="0.5"></path>
+          <text x="0" y="100" font-size="12" fill="#6C757D" text-anchor="middle">温度计</text>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <script>
+    let temp = 20;
+    let isPaused = false;
+    
+    const assembled = { lamp: false, mesh: false, beaker: false, board: false, thermometer: false };
+    
+    const targets = {
+      thermometer: { x: 330, y: 220 }, 
+      board: { x: 330, y: 255 },
+      beaker: { x: 330, y: 300 },
+      mesh: { x: 330, y: 345 },
+      lamp: { x: 330, y: 400 }
+    };
+
+    const currentPos = {
+      thermometer: { x: 530, y: 80 },
+      board: { x: 530, y: 160 },
+      beaker: { x: 530, y: 260 },
+      mesh: { x: 530, y: 350 },
+      lamp: { x: 530, y: 440 }
+    };
+
+    const items = ['lamp', 'mesh', 'beaker', 'board', 'thermometer'];
+
+    function updateTransforms() {
+      items.forEach(id => {
+        const el = document.getElementById(id);
+        el.setAttribute('transform', `translate(${currentPos[id].x}, ${currentPos[id].y})`);
+        if(assembled[id]) {
+          el.classList.add('assembled');
+        } else {
+          el.classList.remove('assembled');
+        }
+      });
+    }
+
+    function resetDOMOrder() {
+      const container = document.getElementById('drag-container');
+      items.forEach(id => container.appendChild(document.getElementById(id)));
+    }
+
+    updateTransforms();
+    resetDOMOrder();
+
+    const svg = document.getElementById('mainSVG');
+    let dragging = null;
+    let offset = { x: 0, y: 0 };
+
+    svg.addEventListener('mousedown', e => {
+      const target = e.target.closest('.draggable');
+      if(target) {
+        dragging = target.id;
+        target.parentNode.appendChild(target); 
+        let pt = svg.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        pt = pt.matrixTransform(svg.getScreenCTM().inverse());
+        offset.x = pt.x - currentPos[dragging].x;
+        offset.y = pt.y - currentPos[dragging].y;
+        assembled[dragging] = false;
+        updateTransforms();
+      }
+    });
+
+    svg.addEventListener('mousemove', e => {
+      if(!dragging) return;
+      let pt = svg.createSVGPoint();
+      pt.x = e.clientX; pt.y = e.clientY;
+      pt = pt.matrixTransform(svg.getScreenCTM().inverse());
+      currentPos[dragging].x = pt.x - offset.x;
+      currentPos[dragging].y = pt.y - offset.y;
+      updateTransforms();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if(!dragging) return;
+      const tx = targets[dragging].x;
+      const ty = targets[dragging].y;
+      const dx = currentPos[dragging].x - tx;
+      const dy = currentPos[dragging].y - ty;
+      if(Math.sqrt(dx*dx + dy*dy) < 45) {
+        currentPos[dragging].x = tx;
+        currentPos[dragging].y = ty;
+        assembled[dragging] = true;
+      }
+      updateTransforms();
+      resetDOMOrder(); 
+      dragging = null;
+    });
+
+    let swTime = 0;
+    let swRunning = false;
+    
+    const btnToggle = document.getElementById('btn-sw-toggle');
+    const btnReset = document.getElementById('btn-sw-reset');
+    const swText = document.getElementById('text-sw-time');
+
+    btnToggle.addEventListener('click', () => {
+      swRunning = !swRunning;
+      btnToggle.querySelector('rect').setAttribute('fill', swRunning ? '#C1121F' : '#E63946');
+    });
+
+    btnReset.addEventListener('click', () => {
+      swRunning = false;
+      swTime = 0;
+      btnToggle.querySelector('rect').setAttribute('fill', '#E63946');
+      updateStopwatchDisplay();
+    });
+
+    function updateStopwatchDisplay() {
+      let totalMs = Math.floor(swTime);
+      let m = Math.floor(totalMs / 60000);
+      let s = Math.floor((totalMs % 60000) / 1000);
+      let ms = Math.floor((totalMs % 1000) / 100);
+      swText.textContent = (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s) + '.' + ms;
+    }
+
+    const btnGlobal = document.getElementById('btn-global-pause');
+    const textGlobal = document.getElementById('text-global-pause');
+    const rectGlobal = btnGlobal.querySelector('rect');
+
+    function toggleGlobalPause() {
+      isPaused = !isPaused;
+      if (isPaused) {
+        textGlobal.textContent = "▶ 恢复实验画面";
+        rectGlobal.setAttribute('fill', '#2A9D8F');
+      } else {
+        textGlobal.textContent = "⏸ 暂停全局实验";
+        rectGlobal.setAttribute('fill', '#E63946');
+      }
+    }
+
+    btnGlobal.addEventListener('click', toggleGlobalPause);
+    window.addEventListener('keydown', e => {
+      if(e.code === 'Space') {
+        toggleGlobalPause();
+        e.preventDefault();
+      }
+    });
+
+    const maxBubbles = 20;
+    let bubbleData = Array(maxBubbles).fill(null).map(() => ({ active: false }));
+    const bg = document.getElementById('bubbles-group');
+    const bubbleElements = [];
+    
+    for(let i=0; i<maxBubbles; i++) {
+      let c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('fill', 'none');
+      c.setAttribute('stroke', '#FFFFFF');
+      c.setAttribute('stroke-width', '1.5');
+      c.setAttribute('opacity', '0');
+      bg.appendChild(c);
+      bubbleElements.push(c);
+    }
+
+    function spawnBubble(type) {
+      let idx = bubbleData.findIndex(b => !b.active);
+      if(idx !== -1) {
+        bubbleData[idx] = {
+          active: true,
+          type: type,
+          x: -25 + Math.random() * 50,
+          y: 35 + Math.random() * 5,
+          r: type === 'pre' ? 4 + Math.random() * 2 : 1.5 + Math.random(),
+          speed: 1 + Math.random() * 0.5,
+          phase: Math.random() * Math.PI * 2
+        };
+      }
+    }
+
+    function renderBubbles() {
+      if (temp > 80 && temp < 100 && Math.random() < 0.2) spawnBubble('pre');
+      if (temp >= 100 && Math.random() < 0.5) spawnBubble('boil');
+
+      bubbleData.forEach((b, i) => {
+        let el = bubbleElements[i];
+        if (b.active) {
+          b.y -= b.speed;
+          if (b.type === 'pre') b.r = Math.max(0, b.r - 0.04);
+          else b.r = Math.min(8, b.r + 0.1);
+          
+          let displayX = b.x + Math.sin(b.y * 0.1 + b.phase) * 1.5; 
+          
+          if (b.y < -15 || b.r <= 0) b.active = false;
+          
+          if (b.active) {
+            el.setAttribute('cx', displayX);
+            el.setAttribute('cy', b.y);
+            el.setAttribute('r', b.r);
+            el.setAttribute('opacity', '0.8');
+          } else {
+            el.setAttribute('opacity', '0');
+          }
+        }
+      });
+    }
+
+    function renderThermometers() {
+      const sLine = document.getElementById('thermo-line');
+      sLine.setAttribute('y', 80 - temp * 1.5);
+      sLine.setAttribute('height', temp * 1.5);
+
+      const bLine = document.getElementById('big-thermo-line');
+      bLine.setAttribute('y', 195 - temp * 3);
+      bLine.setAttribute('height', temp * 3 - 45);
+    }
+
+    let lastTime = 0;
+    let realLastTime = performance.now();
+
+    function update(time) {
+      requestAnimationFrame(update);
+      
+      let realDt = time - realLastTime;
+      realLastTime = time;
+
+      if (!isPaused && swRunning) {
+        swTime += realDt;
+        updateStopwatchDisplay();
+      }
+
+      if(isPaused) return;
+      if(time - lastTime < 30) return;
+      lastTime = time;
+
+      let isHeating = assembled.lamp && assembled.mesh && assembled.beaker && assembled.thermometer;
+      
+      if (isHeating) {
+        if (temp < 100) temp += 0.05;
+        if (temp >= 100) temp = 100;
+      } else {
+        if (temp > 20) temp -= 0.04;
+        if (temp <= 20) temp = 20;
+      }
+
+      renderThermometers();
+      renderBubbles();
+
+      document.getElementById('text-temp').textContent = temp.toFixed(1) + ' ℃';
+      
+      let status = "未全组装 (常温)";
+      let color = "#6C757D";
+      if (isHeating) {
+        if (temp < 100) { status = "持续加热升温中..."; color = "#E63946"; }
+        else { status = "剧烈沸腾！(恒温)"; color = "#E63946"; }
+      } else {
+        if(temp > 20) { 
+           status = assembled.lamp ? "未全组装 (降温)" : "撤走热源冷却中..."; 
+           color = "#457B9D"; 
+        }
+        else if (assembled.mesh && assembled.beaker && assembled.thermometer) {
+           status = "已组装，待加热";
+           color = "#343A40";
+        }
+      }
+      const statusEl = document.getElementById('text-status');
+      statusEl.textContent = status;
+      statusEl.setAttribute('fill', color);
+    }
+
+    requestAnimationFrame(update);
+  </script>
+
+</body></html>
